@@ -1,0 +1,110 @@
+---
+
+- name: xfce4
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+    name:
+      - openssh-server
+      - xfce4
+      - xfce4-goodies
+      - lightdm
+
+- name: Set lightdm as display manager
+  copy:
+    dest: "/etc/X11/default-display-manager"
+    content: |
+      /usr/sbin/lightdm
+
+- name: default-x-display-manager
+  ansible.builtin.debconf:
+    name: lightdm
+    question: shared/default-x-display-manager
+    value: lightdm
+    vtype: string
+  register: display_manager
+
+- name: Reconfigure dpkg with XFCE4 choice
+  command: dpkg-reconfigure lightdm
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+    DEBCONF_NONINTERACTIVE_SEEN: true
+  when: display_manager.changed
+  notify:
+    - reboot
+
+- name: Configure lightdm
+  ansible.builtin.copy:
+    dest: "/etc/lightdm/lightdm.conf"
+    content: |
+      [SeatDefaults]
+      greeter-session=unity-greeter
+      user-session=xfce
+      autologin-session=xfce
+      autologin-user={{ kiosk_user }}
+      autologin-user-timeout=0
+
+- name: Create user autostart directory
+  file:
+    path: "/home/{{ kiosk_user }}/.config/autostart/"
+    recurse: true
+    state: directory
+    owner: "{{ kiosk_user }}"
+    group: "{{ kiosk_user }}"
+
+#  /etc/xdg/autostart
+- name: Disable xfce4 autostart
+  ansible.builtin.copy:
+    dest: "/home/{{ kiosk_user }}/.config/autostart/{{item}}"
+    owner: "{{ kiosk_user }}"
+    content: |
+      [Desktop Entry]
+      Hidden=true
+  loop:
+    - xfce4-notifyd.desktop
+    - xfce4-screensaver.desktop
+    - xscreensaver.desktop
+  notify:
+    - reboot
+
+- name: Configure xfce4 with xconf-query
+  become_user: "{{ kiosk_user }}"
+  ansible.builtin.shell:
+    cmd: "{{ item }}"
+  environment:
+    DISPLAY: ":0"
+  loop:
+    # disable desktop tooltips
+    - /usr/bin/xfconf-query -c xfce4-desktop -np '/desktop-icons/show-tooltips' -t 'bool' -s 'false'
+    # hide desktop icons
+    - /usr/bin/xfconf-query -c xfce4-desktop -np '/desktop-icons/style' -t 'int' -s '0'
+    # Set numebr of workspaces to 2
+    - /usr/bin/xfconf-query -c xfwm4 -np '/general/workspace_count' -t 'int' -s 2
+    # Remove bottom panel
+    - /usr/bin/xfconf-query -c xfce4-panel -np '/panels' -t int -s 1 -a
+    - /usr/bin/xfconf-query -c xfce4-panel -p '/panels/panel-2' --reset --recursive
+    # Disable screensaver
+    - /usr/bin/xfconf-query -c xfce4-screensaver -np '/lock/enabled' -t 'bool' -s 'false'
+    - /usr/bin/xfconf-query -c xfce4-screensaver -np '/saver/enabled' -t 'bool' -s 'false'
+    - /usr/bin/xfconf-query -c xfce4-screensaver -np '/saver/idle-activation/enabled' -t 'bool' -s 'false'
+    - /usr/bin/xfconf-query -c xfce4-screensaver -np '/saver/mode' -t 'int' -s 0
+
+- name: Disable DPMS in Xorg
+  ansible.builtin.copy:
+    dest: "/etc/X11/xorg.conf.d/90-disable-dpms.conf"
+    content: |
+      # Disable DPMS
+      Section "Extensions"
+        Option "DPMS" "Disable"
+      EndSection
+      
+      Section "ServerFlags"
+          Option "StandbyTime" "0"
+          Option "SuspendTime" "0"
+          Option "OffTime" "0"
+          Option "BlankTime" "0"
+          Option "dpms" "false"
+      EndSection
+  notify:
+    - reboot
+
