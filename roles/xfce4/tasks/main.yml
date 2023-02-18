@@ -9,6 +9,7 @@
       - xfce4
       - xfce4-goodies
       - lightdm
+  register: xfce4_install
 
 - name: Set lightdm as display manager
   copy:
@@ -43,6 +44,10 @@
       autologin-session=xfce
       autologin-user={{ kiosk_user }}
       autologin-user-timeout=0
+
+- name: Reboot
+  ansible.builtin.reboot:
+  when: xfce4_install.changed
 
 - name: Create user autostart directory
   file:
@@ -81,8 +86,8 @@
     # Set numebr of workspaces to 2
     - /usr/bin/xfconf-query -c xfwm4 -np '/general/workspace_count' -t 'int' -s 2
     # Remove bottom panel
-    - /usr/bin/xfconf-query -c xfce4-panel -np '/panels' -t int -s 1 -a
-    - /usr/bin/xfconf-query -c xfce4-panel -p '/panels/panel-2' --reset --recursive
+#    - /usr/bin/xfconf-query -c xfce4-panel -np '/panels' -t int -s 1 -a
+#    - /usr/bin/xfconf-query -c xfce4-panel -p '/panels/panel-2' --reset --recursive
     # Disable screensaver
     - /usr/bin/xfconf-query -c xfce4-screensaver -np '/lock/enabled' -t 'bool' -s 'false'
     - /usr/bin/xfconf-query -c xfce4-screensaver -np '/saver/enabled' -t 'bool' -s 'false'

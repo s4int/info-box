@@ -1,0 +1,25 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    kiosk_user: kiosk
+    kiosk_user_passwd: kiosk
+  tasks:
+    - name: Creating users "{{ kiosk_user }}"
+      ansible.builtin.user:
+        name: "{{ kiosk_user }}"
+        password: "{{ kiosk_user_passwd | password_hash('sha512') }}"
+        create_home: true
+
+    - name: Upgrade the OS (apt-get dist-upgrade)
+      ansible.builtin.apt:
+        upgrade: dist
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Set timezone
+      community.general.timezone:
+        name: Europe/Warsaw
+
+  roles:
+    - xfce4
