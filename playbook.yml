@@ -21,5 +21,12 @@
       community.general.timezone:
         name: Europe/Warsaw
 
+- hosts: all
+  become: yes
+  vars:
+    kiosk_user: kiosk
+    kiosk_user_passwd: kiosk
+    vnc_pass: Ch74pWhk
   roles:
     - xfce4
+    - x11vnc

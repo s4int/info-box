@@ -1,0 +1,27 @@
+---
+- name: Install x11vnc
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+    name:
+      - x11vnc
+
+- name: "Store password"
+  raw: "x11vnc -storepasswd {{ vnc_pass }} /etc/x11vnc.pass"
+
+- name: "Set permissions on /etc/x11vnc.pass"
+  file:
+    path: "/etc/x11vnc.pass"
+    mode: 0644
+
+- name: Copy file with owner and permissions
+  ansible.builtin.copy:
+    src: x11vnc.service
+    dest: /lib/systemd/system/
+
+- name: "Enable x11vnc"
+  systemd:
+    name: x11vnc.service
+    daemon_reload: true
+    enabled: true
+    state: started

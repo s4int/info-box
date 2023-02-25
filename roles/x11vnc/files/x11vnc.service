@@ -1,0 +1,16 @@
+[Unit]
+Description=Start x11vnc
+After=multi-user.target display-manager.service
+
+[Service]
+Type=simple
+
+ExecStart=/usr/bin/x11vnc -xkb -repeat -display :0 -auth /var/run/lightdm/root/:0 -rfbauth /etc/x11vnc.passwd -rfbport 5900 -forever -loop -shared -o /var/log/x11vnc.log
+
+Restart=always
+RestartSec=1
+
+ExecStop=/usr/bin/killall x11vnc
+
+[Install]
+WantedBy=multi-user.target
