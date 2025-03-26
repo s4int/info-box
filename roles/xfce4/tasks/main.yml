@@ -9,6 +9,7 @@
       - xfce4
       - xfce4-goodies
       - lightdm
+      - dbus-x11
   register: xfce4_install
 
 - name: Set lightdm as display manager
